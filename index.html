@@ -1207,10 +1207,21 @@ document.querySelectorAll('.faq-q').forEach(q => {
 });
 
 /* ── Qatom modal ── */
+// Drive delivery URLs — replace with Qatom tool IDs once registered
+const REPORT_URLS = {
+  'aris_nav_report':    'https://drive.google.com/uc?export=download&id=1xbSM4N78thFX8yW0NkJDWa9NhjVdxJJx',
+  'ivn_nav_report':     'https://drive.google.com/uc?export=download&id=1hy8_CfVyJzwqsaVQIc3fNyX1ybZ-Y7AW',
+  'itr_nav_report':     'https://drive.google.com/uc?export=download&id=13JBnwkeL4fRMIjSA1Fs9xx6y0I1N_xmS',
+  'vgld_nav_report':    'https://drive.google.com/uc?export=download&id=1hdFJ71bd7Ty9wNdRB_0BPawpcKo0Dep8',
+  'oremetrics_bundle':  'https://pay.m.todaq.net/tool/oremetrics_bundle',
+};
+
 function openQatom(name, price, toolId) {
+  
   document.getElementById('qatom-product-name').textContent = name;
   document.getElementById('qatom-product-price').textContent = `$${price} USD TDN · Instant PDF delivery`;
-  document.getElementById('qatom-deep-link').href = `https://pay.m.todaq.net/tool/${toolId}`;
+  const url = REPORT_URLS[toolId] || `https://pay.m.todaq.net/tool/${toolId}`;
+  document.getElementById('qatom-deep-link').href = url;
   document.getElementById('qatom-overlay').classList.add('active');
   document.body.style.overflow = 'hidden';
 }
