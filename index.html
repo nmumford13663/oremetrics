@@ -1175,7 +1175,7 @@
       </div>
     </div>
     <div class="mike-input-row">
-      <input class="mike-input" id="mike-input" type="text" placeholder="Ask about ARIS, IVN, ITR, VGLD…" maxlength="80"/>
+      <input class="mike-input" id="mike-input" type="text" placeholder="Ask Mike anything about mining stocks…" maxlength="200"/>
       <button class="mike-send" onclick="mikeSend()" id="mike-send-btn">➤</button>
     </div>
   </div>
@@ -1209,10 +1209,10 @@ document.querySelectorAll('.faq-q').forEach(q => {
 /* ── Qatom modal ── */
 // Drive delivery URLs — replace with Qatom tool IDs once registered
 const REPORT_URLS = {
-  'aris_nav_report':    'https://drive.google.com/uc?export=download&id=1xbSM4N78thFX8yW0NkJDWa9NhjVdxJJx',
-  'ivn_nav_report':     'https://drive.google.com/uc?export=download&id=1hy8_CfVyJzwqsaVQIc3fNyX1ybZ-Y7AW',
-  'itr_nav_report':     'https://drive.google.com/uc?export=download&id=13JBnwkeL4fRMIjSA1Fs9xx6y0I1N_xmS',
-  'vgld_nav_report':    'https://drive.google.com/uc?export=download&id=1hdFJ71bd7Ty9wNdRB_0BPawpcKo0Dep8',
+  'aris_nav_report':    'https://pay.m.todaq.net/tool/57',
+  'ivn_nav_report':     'https://pay.m.todaq.net/tool/58',
+  'itr_nav_report':     'https://pay.m.todaq.net/tool/59',
+  'vgld_nav_report':    'https://pay.m.todaq.net/tool/60',
   'oremetrics_bundle':  'https://pay.m.todaq.net/tool/oremetrics_bundle',
 };
 
@@ -1233,7 +1233,54 @@ document.getElementById('qatom-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeQatom();
 });
 
-/* ── Klondike Mike chat ── */
+/* ── Klondike Mike chat — powered by Claude API ── */
+
+const MIKE_SYSTEM = `You are Klondike Mike, a grizzled but warm and friendly Yukon gold prospector who is secretly an expert mining stock analyst. You talk in colorful prospector lingo — use phrases like "partner", "strike it rich", "pan for gold", "assay report", "nugget", "creek bed", "staking a claim" — but your underlying analysis is sharp and accurate.
+
+You work for OreMetrics (oremetrics.co), which sells professional one-page NAV (Net Asset Value) valuation reports for mining stocks at $29 each. You are the free teaser agent — you give quick, punchy NAV insights for free, and funnel serious investors to the paid PDF reports.
+
+OreMetrics currently covers four companies. Use these exact NAV figures (model date June 2026, gold at $4,500/oz):
+
+ARIS — Aris Mining (TSX/NYSE: ARIS)
+- Current price: $25.78 USD
+- OreMetrics NAV: ~$38.40/share USD
+- P/NAV: ~0.67x (33% discount to NAV)
+- Key assets: Segovia (Colombia UG, 265-300 koz/yr), Marmato CIP expansion (200 koz/yr by 2028), Soto Norte PFS ($2.7B NPV), Toroparu PEA (Guyana)
+- Cash: $472M, essentially debt free
+
+IVN — Ivanhoe Mines (TSX: IVN)
+- Current price: C$13.27
+- OreMetrics NAV: ~C$21.50/share
+- P/NAV: ~0.62x (38% discount to NAV)
+- Key assets: Kamoa-Kakula (39.6% IVN, 290-330kt Cu 2026), Kipushi (68% IVN, zinc), Platreef (64% IVN, PGM Phase 2)
+- Three Tier-One assets, world-class copper growth story
+
+ITR — Integra Resources (TSXV: ITR / NYSE American: ITRG)
+- Current price: C$5.34
+- OreMetrics NAV: ~C$9.20/share
+- P/NAV: ~0.58x (42% discount to NAV)
+- Key assets: Florida Canyon (Nevada operating, 70-75 koz/yr), DeLamar FS (Idaho, NPV5% $774M, IRR 46%)
+- BLM FAST-41 permitting underway, ROD targeted Q3 2027
+
+VGLD — Valor Gold (TSX: VGLD)
+- Indicative NAV: C$7.29/share
+- Indicative price: C$3.80 (targeting June 2026 listing)
+- P/NAV: ~0.52x (48% discount to NAV)
+- Key asset: Courageous Lake (NWT Canada), 2024 PFS: NPV5% $523M, IRR 20.6%, 201 koz/yr, 12.6yr LOM
+- Spin-out from Seabridge Gold; 10% Au stream to Seabridge at $4,000/oz
+
+IMPORTANT RULES:
+1. Keep responses under 120 words — punchy, not long-winded
+2. Always stay in Klondike Mike character — colorful but credible
+3. For the four covered stocks, give NAV, current price, P/NAV discount, and one key insight
+4. For stocks not covered, say you have not panned that creek yet and suggest requesting a custom report at oremetrics.co
+5. Always end with a gentle funnel: "For the full assay report with DCF model and sensitivity tables — grab the PDF at OreMetrics for just $29, partner."
+6. NEVER give personalized investment advice. You are an analytical tool, not a financial advisor. If asked for a buy/sell recommendation, give the NAV data and say the decision is theirs to make.
+7. Do not discuss politics, non-mining topics, or anything unrelated to mining stocks and valuation.
+8. Use plain text only — no markdown, no bullet points, no asterisks. Just natural prospector speech.`;
+
+const mikeHistory = [];
+
 const MIKE_DATA = {
   aris: {
     ticker: 'ARIS', price: '$25.78', nav: '$38.40',
@@ -1260,7 +1307,7 @@ const MIKE_DATA = {
 function mikeReply(ticker) {
   const d = MIKE_DATA[ticker];
   if (!d) return null;
-  return `${d.emoji} <em>${d.ticker}</em> — NAV is <em>${d.nav}</em> per share.\n\nAt ${d.price}, that's a fat <em>${d.discount} discount</em> to NAV. ${d.quip}\n\nFor the full map and assay report, grab the PDF below — it's only $29, partner. 🤠`;
+  return `${d.emoji} <em>${d.ticker}</em> — NAV is <em>${d.nav}</em> per share. At ${d.price}, that is a fat <em>${d.discount} discount</em> to NAV. ${d.quip} For the full assay report with DCF model and sensitivity tables — grab the PDF at OreMetrics for just $29, partner.`;
 }
 
 let mikeOpen = false;
@@ -1283,46 +1330,61 @@ function addMsg(text, role) {
   return div;
 }
 
-function mikeSend() {
+function addTyping() {
+  const box = document.getElementById('mike-messages');
+  const div = document.createElement('div');
+  div.className = 'mike-msg bot';
+  div.id = 'mike-typing-indicator';
+  div.innerHTML = '<div class="mike-typing"><span></span><span></span><span></span></div>';
+  box.appendChild(div);
+  box.scrollTop = 99999;
+  return div;
+}
+
+async function mikeSend() {
   const input = document.getElementById('mike-input');
   const val = input.value.trim();
   if (!val) return;
+
   addMsg(val, 'user');
+  mikeHistory.push({ role: 'user', content: val });
   input.value = '';
   input.disabled = true;
   document.getElementById('mike-send-btn').disabled = true;
 
-  // Typing indicator
-  const typing = document.createElement('div');
-  typing.className = 'mike-msg bot';
-  typing.innerHTML = '<div class="mike-typing"><span></span><span></span><span></span></div>';
-  document.getElementById('mike-messages').appendChild(typing);
-  document.getElementById('mike-messages').scrollTop = 99999;
+  const typingEl = addTyping();
 
-  setTimeout(() => {
-    typing.remove();
-    const lower = val.toLowerCase();
-    let reply;
-    if (lower.includes('aris') || lower.includes('armn')) {
-      reply = mikeReply('aris');
-    } else if (lower.includes('ivn') || lower.includes('ivanhoe') || lower.includes('kamoa')) {
-      reply = mikeReply('ivn');
-    } else if (lower.includes('itr') || lower.includes('itrg') || lower.includes('integra') || lower.includes('delamar')) {
-      reply = mikeReply('itr');
-    } else if (lower.includes('vgld') || lower.includes('valor') || lower.includes('courageous')) {
-      reply = mikeReply('vgld');
-    } else if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
-      reply = "Howdy partner! 🤠 Ask me about <em>ARIS</em>, <em>IVN</em>, <em>ITR</em>, or <em>VGLD</em> for a quick NAV scout!";
-    } else if (lower.includes('nav') || lower.includes('what') || lower.includes('help')) {
-      reply = "I can scout NAV estimates for: <em>ARIS</em> (Aris Mining), <em>IVN</em> (Ivanhoe Mines), <em>ITR</em> (Integra Resources), and <em>VGLD</em> (Valor Gold). Just ask, partner!";
-    } else {
-      reply = "Hmm, that ticker's not in my pan yet, partner! Try <em>ARIS</em>, <em>IVN</em>, <em>ITR</em>, or <em>VGLD</em> — or head to the reports section to request a custom valuation. 🤠";
-    }
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: MIKE_SYSTEM,
+        messages: mikeHistory,
+      }),
+    });
+
+    const data = await response.json();
+    const reply = data.content?.[0]?.text ||
+      "Well partner, my telegraph line has gone quiet — try again in a moment!";
+
+    typingEl.remove();
     addMsg(reply, 'bot');
-    input.disabled = false;
-    document.getElementById('mike-send-btn').disabled = false;
-    input.focus();
-  }, 1100 + Math.random() * 600);
+    mikeHistory.push({ role: 'assistant', content: reply });
+
+    // Keep history to last 10 turns to avoid token bloat
+    if (mikeHistory.length > 20) mikeHistory.splice(0, 2);
+
+  } catch (err) {
+    typingEl.remove();
+    addMsg("Looks like the telegraph line is down, partner — try again in a moment! 🤠", 'bot');
+  }
+
+  input.disabled = false;
+  document.getElementById('mike-send-btn').disabled = false;
+  input.focus();
 }
 
 document.getElementById('mike-input').addEventListener('keydown', e => {
